@@ -1,13 +1,17 @@
 %{
 	#include "test.tab.h"
+	#include "int.h"
 	#include <stdio.h>
 	#include <stdlib.h>
 
-	extern int yylineno;
-	int yylex(void);
-	void yyerror(const char *err) { printf("Error in line %lu: %s\n", (unsigned long)yylineno, err); exit(1); }
+	void yyerror(Interpreter *inter, const char *err) { printf("Error in line %lu: %s\n", 1, err); exit(1); }
 
 %}
+
+%define api.pure
+
+%parse-param { Interpreter *inter }
+
 
 %union {
     char                *sVal;
