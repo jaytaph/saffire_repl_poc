@@ -4,18 +4,13 @@
 	#include <string.h>
 	#include <stdio.h>
 
-	size_t repl_read(FILE *f, char *buf, size_t max, Interpreter *interpreter);
-
-    #undef YY_INPUT
-    #define YY_INPUT(buf, result, max_size) result = repl_read(yyin, buf, max_size, yyget_extra(yyscanner))
+	size_t yyread(FILE *f, char *buf, size_t max, Interpreter *interpreter);
 
     #define YY_EXTRA_TYPE Interpreter *
 
-//	#define YY_USER_ACTION  if (!isspace(*yytext)) { yyextra->atStart = 0; }
-//    #define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno;
-
-
-    extern int yylex(union YYSTYPE * yylval, struct YYLTYPE *yyloc, yyscan_t scanner);
+    #undef YY_INPUT
+    #define YY_INPUT(buf, result, max_size) result = yyread(yyin, buf, max_size, yyextra)
+    #define YY_USER_ACTION  if (!isspace(*yytext)) { yyextra->atStart = 0; }
 
 	int yyerror(struct YYLTYPE *, Interpreter *, const char *);
 
@@ -67,7 +62,7 @@ string          [a-z]+
 
 %%
 
-size_t repl_read(FILE *f, char *buf, size_t max, Interpreter *interpreter) {
+size_t yyread(FILE *f, char *buf, size_t max, Interpreter *interpreter) {
     fprintf(stdout, "\n\nCUSTOM YYREAD!\n\n");
 
 	if (f == NULL) {

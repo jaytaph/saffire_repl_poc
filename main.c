@@ -17,17 +17,19 @@ int main(int argc, char **argv) {
 
     int interactive = argc;
 
+    FILE *f = fopen("test.a", "r");
+    inter.f = f;
+
+    inter.atStart = 1;
+    inter.completeLine = 0;
+    inter.echo = NULL;
+    inter.error = NULL;
     inter.ps1 = strdup(">");
     inter.ps2 = strdup("...");
     inter.eof = 0;
 
-    yylex_init(&scanner);
-    yylex_init_extra(inter, &scanner);
-
-    FILE *f = fopen("test.a", "r");
+    yylex_init_extra(&inter, &scanner);
     yyset_in(f, scanner);
-
-//    yylex_init_extra(inter, &scanner);
 
     while (! inter.eof) {
         inter.atStart = 1;
