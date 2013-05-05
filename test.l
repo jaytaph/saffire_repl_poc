@@ -4,22 +4,37 @@
 	#include <string.h>
 	#include <stdio.h>
 
-	#define YY_USER_ACTION  if (!isspace(*yytext)) { yyextra->atStart = 0; }
+	size_t repl_read(FILE *f, char *buf, size_t max, Interpreter *interpreter);
+
+    #undef YY_INPUT
+    #define YY_INPUT(buf, result, max_size) result = repl_read(yyin, buf, max_size, yyget_extra(yyscanner))
+
+    #define YY_EXTRA_TYPE Interpreter *
+
+//	#define YY_USER_ACTION  if (!isspace(*yytext)) { yyextra->atStart = 0; }
+//    #define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno;
+
+
+    extern int yylex(union YYSTYPE * yylval, struct YYLTYPE *yyloc, yyscan_t scanner);
+
+	int yyerror(struct YYLTYPE *, Interpreter *, const char *);
+
 %}
 
+%option noyywrap
 %option reentrant
 %option bison-bridge
+%option bison-locations
 
 %option yylineno
-%option nounput noyy_top_state
-%option debug
 %option extra-type="Interpreter *"
+%option debug
 
 
 lnum            [0-9]+
 identifier      (::[\+])|([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)|([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*[\?\!]?)
 whitespace      [ \t\n\r]+
-string		[a-z]+
+string          [a-z]+
 
 %%
 
@@ -28,7 +43,7 @@ string		[a-z]+
 "class"		{ return T_CLASS; }
 "="		{ return T_ASSIGNMENT; }
 
-[;] { return yytext[0]; }
+[;\+] { return yytext[0]; }
 
 {string}	{
     yylval->sVal = strdup(yytext);
@@ -52,9 +67,9 @@ string		[a-z]+
 
 %%
 
-int yywrap(yyscan_t yyscanner) { return 1 ; }
+size_t repl_read(FILE *f, char *buf, size_t max, Interpreter *interpreter) {
+    fprintf(stdout, "\n\nCUSTOM YYREAD!\n\n");
 
-size_t yyread(FILE *f, char *buf, size_t max, Interpreter *interpreter) {
 	if (f == NULL) {
 		if (interpreter->completeLine) {
 			if (interpreter->atStart && interpreter->echo != NULL) {
@@ -78,7 +93,14 @@ size_t yyread(FILE *f, char *buf, size_t max, Interpreter *interpreter) {
 		}
 		return len;
 	} else {
+
+        if (feof(f)) {
+            interpreter->eof = 1;
+            return 0;
+        }
 		size_t len = fread(buf, 1, max, f);
+        printf("fread(): %d (%d)\n", len, feof(f));
+
 		if (len == 0 && ferror(f)) {
 			printf("Error!");
 		}

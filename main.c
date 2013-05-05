@@ -3,10 +3,17 @@
 #include "test.tab.h"
 #include "int.h"
 
+typedef void * yyscan_t;
+
 extern int yyparse();
+extern FILE *yyin;
+extern int yydebug;
 
 int main(int argc, char **argv) {
     Interpreter inter;
+    yyscan_t scanner;
+
+    yydebug = 0;
 
     int interactive = argc;
 
@@ -14,11 +21,17 @@ int main(int argc, char **argv) {
     inter.ps2 = strdup("...");
     inter.eof = 0;
 
+    yylex_init(&scanner);
+    yylex_init_extra(inter, &scanner);
+
+    FILE *f = fopen("test.a", "r");
+    yyset_in(f, scanner);
+
 //    yylex_init_extra(inter, &scanner);
 
     while (! inter.eof) {
         inter.atStart = 1;
-        int status = yyparse(&inter);
+        int status = yyparse(scanner, &inter);
         if (status) {
             if (inter.error) {
                 fprintf(stderr, "Interpreter Error");
@@ -29,8 +42,10 @@ int main(int argc, char **argv) {
                 inter.echo = strdup("foobar!");
             }
         }
-
     }
+
+    yylex_destroy(scanner);
+    fclose(f);
 
     return 0;
 }
