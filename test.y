@@ -7,19 +7,17 @@
 
     #include "test.tab.h"
 
-    typedef void * yyscan_t;
+    typedef void *yyscan_t;
 
     extern int yywrap(yyscan_t scanner);
-    extern int yylex(union YYSTYPE * yylval, struct YYLTYPE *yyloc, yyscan_t scanner);
+    extern int yylex(union YYSTYPE * yylval, YYLTYPE *yylloc, yyscan_t scanner);
 
-//    void yyprint(FILE *, int , const union YYSTYPE * const);
-//    #define YYPRINT(File, Type, Value) yyprint (File, /* &yylloc, */ Type, &Value)
+    int yyerror(YYLTYPE *, yyscan_t scanner, Interpreter *, const char *);
 
-    int yyerror(struct YYLTYPE *, yyscan_t scanner, Interpreter *, const char *);
+    #define ERROR_RECOV | error { yyerrok; yyclearin; fprintf(stdout, "Recovering on error"); }
 
 %}
 
-%locations
 
 %define api.pure
 
@@ -27,6 +25,8 @@
 %parse-param { yyscan_t scanner }
 %parse-param { Interpreter *interpreter }
 %error-verbose
+
+%locations
 
 %union {
     char                *sVal;
@@ -47,26 +47,7 @@
 %%
 
 saffire :
-		class_def_list assignment_list { }
-;
-
-assignment_list :
-		non_empty_assignment_list { }
-;
-
-non_empty_assignment_list :
-		assignment { }
-	| 	non_empty_assignment_list assignment { }
-;
-
-assignment :
-		T_STRING T_ASSIGNMENT T_LNUM            ';' { fprintf(stdout, "\n\033[41;37;1m Assigning %s \033[0m\n", $1); }
-    |	T_STRING T_ASSIGNMENT expr '+' expr ';' { fprintf(stdout, "\n\033[41;37;1m Assigning %s with %s and %s \033[0m\n", $1, $3, $5); }
-;
-
-expr :
-        T_STRING { $$ = $1 }
-    |   T_LNUM { char buf[100];  snprintf(buf, 99, "%d", $1); $$ = strdup(buf); }
+		class_def_list { }
 ;
 
 class_def_list :
@@ -80,13 +61,64 @@ non_empty_class_def_list:
 ;
 
 class_def :
-		T_CLASS T_STRING ';' { fprintf(stdout, "\n\033[41;37;1m Class %s defined\033[0m\n", $2); }
+		T_CLASS T_STRING '{' {
+		    char buf[256];
+
+		    snprintf(buf, 255, "global/class(%s)", $2);
+		    if (interpreter->context) free(interpreter->context);
+		    interpreter->context = strdup(buf);
+		}
+		assignment_list '}' {
+		    char buf[256];
+
+		    snprintf(buf, 255, "\033[41;37;1mClass %s defined\033[0m", $2);
+		    interpreter->echo = strdup(buf);
+
+		    if (interpreter->context) free(interpreter->context);
+		    interpreter->context = strdup("global");
+
+		    YYACCEPT;
+        }
 ;
+
+assignment_list :
+		non_empty_assignment_list { }
+	|   /* empty */ { }
+;
+
+non_empty_assignment_list :
+		assignment { }
+	| 	non_empty_assignment_list assignment { }
+;
+
+assignment :
+        T_STRING T_ASSIGNMENT expr          ';' { fprintf(stdout, "\n\033[41;37;1m Assigning %s \033[0m\n", $1); }
+    |   T_STRING T_ASSIGNMENT expr '+' expr ';' { fprintf(stdout, "\n\033[41;37;1m Assigning %s with %s and %s \033[0m\n", $1, $3, $5); }
+    |   error { yyerrok; yyclearin; }
+;
+
+expr :
+        T_STRING    { $$ = $1 }
+    |   T_LNUM      { char buf[100];  snprintf(buf, 99, "%d", $1); $$ = strdup(buf); }
+    ;
 
 %%
 
-int yyerror(struct YYLTYPE *yyloc, yyscan_t scanner, Interpreter *inter, const char *message) {
-    printf("yyparse() error at line %d: %s\n", yyloc->first_line, message);
+extern flush_buffer(yyscan_t scanner);
+
+/**
+ * Displays error based on location, scanner and interpreter structure. Will continue or fail depending on interpreter mode
+ */
+int yyerror(YYLTYPE *yylloc, yyscan_t scanner, Interpreter *inter, const char *message) {
+    printf("yyparse() error at line %d: %s\n", yylloc->first_line, message);
+
+    // Just return when we are inside REPL mode
+    if (inter->mode == MODE_REPL) {
+        flush_buffer(scanner);
+        return;
+    }
+
+    // Otherwise, exit.
     exit(1);
 }
 

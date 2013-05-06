@@ -1,6 +1,13 @@
 class a;
 class b;
 class c;
-foo=1;
+
+foo=bar+baz;
+
 bar=2;
+
+
+
 baz=3+5;
+
+baz = baz + 1;
