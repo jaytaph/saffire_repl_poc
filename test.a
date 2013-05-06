@@ -1,13 +1,6 @@
-class a;
-class b;
-class c;
+class a {
+  b = 1;
+  c = 2;
+}
 
-foo=bar+baz;
-
-bar=2;
-
-
-
-baz=3+5;
-
-baz = baz + 1;
+class b { }

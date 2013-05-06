@@ -51,7 +51,6 @@ int main(int argc, char **argv) {
         // New 'parse' loop
         inter.atStart = 1;
         int status = yyparse(scanner, &inter);
-        fprintf(stdout, "Status: %d\n", status);
 
         // Did something went wrong?
         if (status) {
